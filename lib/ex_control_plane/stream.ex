@@ -27,19 +27,29 @@ defmodule ExControlPlane.Stream do
       {:ok, pid}
     else
       [{pid, _value}] ->
+        Logger.info("Node=#{node_info} is already registered, continuing with pid=#{pid}")
         {:ok, pid}
 
       {:error, {:already_started, pid}} ->
+        Logger.info(
+          "Node=#{node_info} is already registered and started, continuing with pid=#{pid}"
+        )
+
         {:ok, pid}
     end
   end
 
   def push_resource_changes(cluster_id, type_url, hash) do
+    Logger.info(
+      "Pushing resources change with hash=#{hash} and cluster_id=#{cluster_id} and type_url=#{type_url}"
+    )
+
     Registry.select(ExControlPlane.StreamRegistry, [
       {{{:_, :"$1", :"$2"}, :"$3", :_}, [{:==, :"$1", cluster_id}, {:==, :"$2", type_url}],
        [:"$3"]}
     ])
     |> Enum.each(fn pid ->
+      Logger.info("Pushing hash=#{hash} and type_url=#{type_url} to pid=#{pid}")
       GenServer.call(pid, {:push_resource_changes, hash})
     end)
   end
@@ -68,12 +78,15 @@ defmodule ExControlPlane.Stream do
   end
 
   def init([grpc_stream, node_info, type_url]) do
+    Logger.info("Attempting to register node=#{node_info}")
+
     case Registry.register(
            ExControlPlane.StreamRegistry,
            {grpc_stream, node_info.cluster, type_url},
            %{in_sync: false}
          ) do
       {:ok, _pid} ->
+        Logger.info("Successfully registered node=#{node_info}")
         monitor_grpc_stream_pid(grpc_stream)
 
         {:ok,
@@ -87,6 +100,7 @@ defmodule ExControlPlane.Stream do
          }}
 
       {:error, {:already_registered, _pid} = error} ->
+        Logger.info("Error registering node=#{node_info}")
         {:stop, error}
     end
   end
@@ -124,6 +138,10 @@ defmodule ExControlPlane.Stream do
   end
 
   def handle_call({:push_resource_changes, hash}, _from, state) do
+    Logger.info(
+      "Handling push resource changes with hash=#{hash} and state_version=#{state.version} type_url=#{state.type_url}"
+    )
+
     if state.hash != hash do
       Logger.info(cluster: state.node_info.cluster, message: "changes for type #{state.type_url}")
       {:reply, :ok, push_resources(%{state | hash: hash})}
@@ -166,6 +184,7 @@ defmodule ExControlPlane.Stream do
 
       _ ->
         new_version = state.version + 1
+        Logger.info("Pushing new version=#{new_version} and type_url=#{state.type_url}")
 
         {:ok, response} =
           Protobuf.JSON.from_decoded(
