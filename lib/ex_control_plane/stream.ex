@@ -28,14 +28,14 @@ defmodule ExControlPlane.Stream do
     else
       [{pid, _value}] ->
         Logger.info(
-          "Node=#{node_info.cluster} is already registered, continuing with pid=#{inspect(pid)}"
+          "Node=#{node_info.cluster} is already registered, continuing with pid=#{inspect(pid)} type_url=#{type_url}"
         )
 
         {:ok, pid}
 
       {:error, {:already_started, pid}} ->
         Logger.info(
-          "Node=#{node_info.cluster} is already registered and started, continuing with pid=#{inspect(pid)}"
+          "Node=#{node_info.cluster} is already registered and started, continuing with pid=#{inspect(pid)} type_url=#{type_url}"
         )
 
         {:ok, pid}
@@ -79,7 +79,7 @@ defmodule ExControlPlane.Stream do
   end
 
   def init([grpc_stream, node_info, type_url]) do
-    Logger.info("Attempting to register node=#{inspect(node_info.cluster)}")
+    Logger.info("Attempting to register node=#{inspect(node_info.cluster)} type_url=#{type_url}")
 
     case Registry.register(
            ExControlPlane.StreamRegistry,
@@ -87,7 +87,10 @@ defmodule ExControlPlane.Stream do
            %{in_sync: false}
          ) do
       {:ok, _pid} ->
-        Logger.info("Successfully registered node=#{inspect(node_info.cluster)}")
+        Logger.info(
+          "Successfully registered node=#{inspect(node_info.cluster)} type_url=#{type_url}"
+        )
+
         monitor_grpc_stream_pid(grpc_stream)
 
         {:ok,
@@ -101,7 +104,7 @@ defmodule ExControlPlane.Stream do
          }}
 
       {:error, {:already_registered, _pid} = error} ->
-        Logger.info("Error registering node=#{inspect(node_info.cluster)}")
+        Logger.info("Error registering node=#{inspect(node_info.cluster)} type_url=#{type_url}")
         {:stop, error}
     end
   end
@@ -114,7 +117,8 @@ defmodule ExControlPlane.Stream do
         # nothing to do
         Logger.info(
           cluster: node_info.cluster,
-          message: "#{state.type_url} Acked version by #{node_info.node_id} version #{version}"
+          message:
+            "#{state.type_url} Acked version by #{node_info.node_id} version #{version} type_url=#{state.type_url}"
         )
 
         update_status(%{in_sync: true})

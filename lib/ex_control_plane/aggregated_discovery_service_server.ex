@@ -22,7 +22,10 @@ defmodule ExControlPlane.AggregatedDiscoveryServiceServer do
          stream
        ) do
     node_info = node_info(req)
-    Logger.info("Discovery request from cluster=#{node_info.cluster}")
+
+    Logger.info(
+      "Discovery request from cluster=#{node_info.cluster} type_url=#{type_url} version=#{version}"
+    )
 
     if not is_nil(error) do
       Logger.error("ADS discovery request error #{inspect(error)}")
