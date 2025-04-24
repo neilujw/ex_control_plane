@@ -140,7 +140,7 @@ defmodule ExControlPlane.Stream do
 
   def handle_call({:push_resource_changes, hash}, _from, state) do
     Logger.info(
-      "Handling push resource changes with hash=#{hash} and state_version=#{state.version} type_url=#{state.type_url}"
+      "Handling push resource changes with state_version=#{state.version} type_url=#{state.type_url}"
     )
 
     if state.hash != hash do
