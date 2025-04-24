@@ -43,16 +43,14 @@ defmodule ExControlPlane.Stream do
   end
 
   def push_resource_changes(cluster_id, type_url, hash) do
-    Logger.info(
-      "Pushing resources change with hash=#{hash} and cluster_id=#{cluster_id} and type_url=#{type_url}"
-    )
+    Logger.info("Pushing resources change and cluster_id=#{cluster_id} and type_url=#{type_url}")
 
     Registry.select(ExControlPlane.StreamRegistry, [
       {{{:_, :"$1", :"$2"}, :"$3", :_}, [{:==, :"$1", cluster_id}, {:==, :"$2", type_url}],
        [:"$3"]}
     ])
     |> Enum.each(fn pid ->
-      Logger.info("Pushing hash=#{hash} and type_url=#{type_url} to pid=#{inspect(pid)}")
+      Logger.info("Pushing  type_url=#{type_url} to pid=#{inspect(pid)}")
       GenServer.call(pid, {:push_resource_changes, hash})
     end)
   end
