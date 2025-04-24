@@ -28,14 +28,14 @@ defmodule ExControlPlane.Stream do
     else
       [{pid, _value}] ->
         Logger.info(
-          "Node=#{node_info} is already registered, continuing with pid=#{inspect(pid)}"
+          "Node=#{node_info.cluster} is already registered, continuing with pid=#{inspect(pid)}"
         )
 
         {:ok, pid}
 
       {:error, {:already_started, pid}} ->
         Logger.info(
-          "Node=#{node_info} is already registered and started, continuing with pid=#{inspect(pid)}"
+          "Node=#{node_info.cluster} is already registered and started, continuing with pid=#{inspect(pid)}"
         )
 
         {:ok, pid}
