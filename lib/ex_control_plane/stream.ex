@@ -27,12 +27,15 @@ defmodule ExControlPlane.Stream do
       {:ok, pid}
     else
       [{pid, _value}] ->
-        Logger.info("Node=#{node_info} is already registered, continuing with pid=#{pid}")
+        Logger.info(
+          "Node=#{node_info} is already registered, continuing with pid=#{inspect(pid)}"
+        )
+
         {:ok, pid}
 
       {:error, {:already_started, pid}} ->
         Logger.info(
-          "Node=#{node_info} is already registered and started, continuing with pid=#{pid}"
+          "Node=#{node_info} is already registered and started, continuing with pid=#{inspect(pid)}"
         )
 
         {:ok, pid}
@@ -49,7 +52,7 @@ defmodule ExControlPlane.Stream do
        [:"$3"]}
     ])
     |> Enum.each(fn pid ->
-      Logger.info("Pushing hash=#{hash} and type_url=#{type_url} to pid=#{pid}")
+      Logger.info("Pushing hash=#{hash} and type_url=#{type_url} to pid=#{inspect(pid)}")
       GenServer.call(pid, {:push_resource_changes, hash})
     end)
   end
@@ -78,7 +81,7 @@ defmodule ExControlPlane.Stream do
   end
 
   def init([grpc_stream, node_info, type_url]) do
-    Logger.info("Attempting to register node=#{node_info}")
+    Logger.info("Attempting to register node=#{inspect(node_info)}")
 
     case Registry.register(
            ExControlPlane.StreamRegistry,
@@ -86,7 +89,7 @@ defmodule ExControlPlane.Stream do
            %{in_sync: false}
          ) do
       {:ok, _pid} ->
-        Logger.info("Successfully registered node=#{node_info}")
+        Logger.info("Successfully registered node=#{inspect(node_info)}")
         monitor_grpc_stream_pid(grpc_stream)
 
         {:ok,
@@ -100,7 +103,7 @@ defmodule ExControlPlane.Stream do
          }}
 
       {:error, {:already_registered, _pid} = error} ->
-        Logger.info("Error registering node=#{node_info}")
+        Logger.info("Error registering node=#{inspect(node_info)}")
         {:stop, error}
     end
   end
