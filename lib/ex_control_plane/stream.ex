@@ -81,7 +81,7 @@ defmodule ExControlPlane.Stream do
   end
 
   def init([grpc_stream, node_info, type_url]) do
-    Logger.info("Attempting to register node=#{inspect(node_info)}")
+    Logger.info("Attempting to register node=#{inspect(node_info.cluster)}")
 
     case Registry.register(
            ExControlPlane.StreamRegistry,
@@ -89,7 +89,7 @@ defmodule ExControlPlane.Stream do
            %{in_sync: false}
          ) do
       {:ok, _pid} ->
-        Logger.info("Successfully registered node=#{inspect(node_info)}")
+        Logger.info("Successfully registered node=#{inspect(node_info.cluster)}")
         monitor_grpc_stream_pid(grpc_stream)
 
         {:ok,
@@ -103,7 +103,7 @@ defmodule ExControlPlane.Stream do
          }}
 
       {:error, {:already_registered, _pid} = error} ->
-        Logger.info("Error registering node=#{inspect(node_info)}")
+        Logger.info("Error registering node=#{inspect(node_info.cluster)}")
         {:stop, error}
     end
   end
