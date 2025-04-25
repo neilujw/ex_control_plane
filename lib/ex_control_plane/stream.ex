@@ -91,7 +91,7 @@ defmodule ExControlPlane.Stream do
           "Successfully registered node=#{inspect(node_info.cluster)} type_url=#{type_url}"
         )
 
-        monitor_grpc_stream_pid(grpc_stream)
+        monitor_grpc_stream_pid(grpc_stream.payload.pid)
 
         {:ok,
          %{
@@ -107,6 +107,10 @@ defmodule ExControlPlane.Stream do
         Logger.info("Error registering node=#{inspect(node_info.cluster)} type_url=#{type_url}")
         {:stop, error}
     end
+  end
+
+  def handle_call(:test, _from, state) do
+    {:reply, state, state}
   end
 
   def handle_call({:event, version}, _from, %{waiting_ack: waiting_ack} = state) do
@@ -169,7 +173,7 @@ defmodule ExControlPlane.Stream do
     {:stop, :normal, state}
   end
 
-  defp monitor_grpc_stream_pid(%GRPC.Server.Stream{payload: %{pid: pid}}) do
+  defp monitor_grpc_stream_pid(pid) do
     Process.monitor(pid)
   end
 
