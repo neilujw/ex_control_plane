@@ -109,7 +109,7 @@ defmodule ExControlPlane.StreamTest do
              GenServer.call(new_stream_pid, :test)
   end
 
-  test "two Envoys" do
+  test "two Envoys, killing one genserver" do
     assert 0 == Registry.count(ExControlPlane.StreamRegistry)
 
     assert %{active: 0, workers: 0, supervisors: 0, specs: 0} ==
@@ -126,8 +126,13 @@ defmodule ExControlPlane.StreamTest do
     node_info = %{cluster: "cluster", node_id: "id"}
     type_url = "type.googleapis.com/envoy.config.route.v3.ScopedRouteConfiguration"
 
-    {:ok, stream_pid} = ExControlPlane.Stream.ensure_registred(grpc_stream, node_info, type_url)
-    {:ok, stream_pid2} = ExControlPlane.Stream.ensure_registred(grpc_stream2, node_info, type_url)
+    {:ok, stream_pid} =
+      ExControlPlane.Stream.ensure_registred(grpc_stream, node_info, type_url)
+      |> IO.inspect(label: "stream 1")
+
+    {:ok, stream_pid2} =
+      ExControlPlane.Stream.ensure_registred(grpc_stream2, node_info, type_url)
+      |> IO.inspect(label: "stream 2")
 
     assert 2 == Registry.count(ExControlPlane.StreamRegistry)
 
@@ -151,6 +156,45 @@ defmodule ExControlPlane.StreamTest do
 
     assert %{stream: %{payload: %{pid: ^grpc_stream_pid}}} =
              GenServer.call(stream_pid, :test)
+
+    assert %{stream: %{payload: %{pid: ^grpc_stream_pid2}}} =
+             GenServer.call(stream_pid2, :test)
+
+    # kill grpc stream
+    IO.inspect(grpc_stream_pid, label: "grpc stream 1 pid")
+    IO.inspect(grpc_stream_pid2, label: "grpc stream 2 pid")
+
+    dyn_sup_pid =
+      Process.whereis(ExControlPlane.StreamSupervisor) |> IO.inspect(label: "dyn sup")
+
+    assert %{active: 2, workers: 2, supervisors: 0, specs: 2} ==
+             DynamicSupervisor.count_children(ExControlPlane.DynamicTestSupervisor)
+
+    assert %{active: 2, workers: 2, supervisors: 0, specs: 2} ==
+             DynamicSupervisor.count_children(ExControlPlane.StreamSupervisor)
+
+    # Process.monitor(stream_pid2) |> IO.inspect(label: "monitor")
+    true = Process.exit(grpc_stream_pid, :kill)
+
+    # should send a DOWN message to the Genserver which should then :stop
+    assert wait(fn -> not Process.alive?(stream_pid) end, 1000)
+    #    assert wait(fn -> Process.alive?(stream_pid2) end, 1000)
+
+    # and deregister/be removed from dynamic supervisor
+    assert %{active: 1, workers: 1, supervisors: 0, specs: 1} ==
+             DynamicSupervisor.count_children(ExControlPlane.StreamSupervisor)
+
+    assert 1 == Registry.count(ExControlPlane.StreamRegistry)
+
+    assert [{_, ^stream_pid2, :worker, [ExControlPlane.Stream]}] =
+             DynamicSupervisor.which_children(ExControlPlane.StreamSupervisor)
+
+    # registry has been updated and contains only the new PID
+    assert [^stream_pid2] =
+             Registry.select(ExControlPlane.StreamRegistry, [
+               {{{:_, :"$1", :"$2"}, :"$3", :_},
+                [{:==, :"$1", node_info.cluster}, {:==, :"$2", type_url}], [:"$3"]}
+             ])
 
     assert %{stream: %{payload: %{pid: ^grpc_stream_pid2}}} =
              GenServer.call(stream_pid2, :test)

@@ -22,7 +22,11 @@ defmodule ExControlPlane.Stream do
          {:ok, pid} <-
            DynamicSupervisor.start_child(
              ExControlPlane.StreamSupervisor,
-             {__MODULE__, [grpc_stream, node_info, type_url]}
+             %{
+               id: ExControlPlane.Stream,
+               start: {__MODULE__, :start_link, [[grpc_stream, node_info, type_url]]},
+               restart: :transient
+             }
            ) do
       {:ok, pid}
     else
@@ -79,7 +83,9 @@ defmodule ExControlPlane.Stream do
   end
 
   def init([grpc_stream, node_info, type_url]) do
-    Logger.info("Attempting to register node=#{inspect(node_info.cluster)} type_url=#{type_url}")
+    Logger.info(
+      "Attempting to register node=#{inspect(node_info.cluster)} type_url=#{type_url} pid=#{inspect(self())} grpc=#{inspect(grpc_stream.payload.pid)}"
+    )
 
     case Registry.register(
            ExControlPlane.StreamRegistry,
@@ -171,6 +177,12 @@ defmodule ExControlPlane.Stream do
     )
 
     {:stop, :normal, state}
+  end
+
+  def terminate(reason, state) do
+    Logger.info(
+      "Terminating Stream with reason=#{inspect(reason)} and stream_pid=#{inspect(state.stream.payload.pid)}"
+    )
   end
 
   defp monitor_grpc_stream_pid(pid) do

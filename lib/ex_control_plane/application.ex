@@ -17,7 +17,7 @@ defmodule ExControlPlane.Application do
         {GRPC.Server.Supervisor,
          [
            {:endpoint, ExControlPlane.Endpoint},
-           {:port, Application.get_env(:ex_control_plane, :grpc_endpoint_port, 18000)},
+           {:port, Application.get_env(:ex_control_plane, :grpc_endpoint_port, 18001)},
            {:start_server, Application.get_env(:ex_control_plane, :grpc_start_server, true)}
            | Application.get_env(:ex_control_plane, :grpc_server_opts, [])
          ]}
